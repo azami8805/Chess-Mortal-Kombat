@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Chess × Mortal Kombat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+
+<main id="app">
+
+  <!-- MODE SELECT -->
+  <section id="mode-select-screen" class="screen">
+    <h1 class="title">CHESS <span class="accent">×</span> MORTAL KOMBAT</h1>
+    <div class="accent-bar"></div>
+    <h2 class="subheading">CHOOSE YOUR BATTLE</h2>
+
+    <div class="mode-list">
+      <button class="mode-btn" data-mode="hotseat" style="--mode-accent: var(--blood)">
+        <span class="mode-badge">H</span>
+        <span class="mode-text">
+          <span class="mode-name">HOT-SEAT</span>
+          <span class="mode-desc">Two players, one screen — pass the device each turn.</span>
+        </span>
+      </button>
+      <button class="mode-btn" data-mode="computer" style="--mode-accent: var(--ember)">
+        <span class="mode-badge">C</span>
+        <span class="mode-text">
+          <span class="mode-name">VS COMPUTER</span>
+          <span class="mode-desc">Play White or Black against the in-browser engine.</span>
+        </span>
+      </button>
+      <button class="mode-btn" data-mode="online" style="--mode-accent: var(--gold)">
+        <span class="mode-badge">O</span>
+        <span class="mode-text">
+          <span class="mode-name">ONLINE</span>
+          <span class="mode-desc">Share a room code — two devices, live moves.</span>
+        </span>
+      </button>
+    </div>
+
+    <!-- VS Computer color pick -->
+    <div id="color-pick" class="panel-card hidden">
+      <p class="panel-label">PLAY AS</p>
+      <div class="button-row">
+        <button class="pill-btn" data-color="w">WHITE</button>
+        <button class="pill-btn" data-color="b">BLACK</button>
+      </div>
+    </div>
+
+    <!-- Online room join -->
+    <div id="online-join" class="panel-card hidden">
+      <p class="panel-label">ROOM CODE</p>
+      <div class="button-row">
+        <input id="room-code-input" maxlength="6" autocomplete="off" placeholder="ABCDE" />
+        <button id="room-join-btn" class="pill-btn">JOIN</button>
+      </div>
+      <p id="online-status" class="panel-status"></p>
+    </div>
+  </section>
+
+  <!-- MATCH -->
+  <section id="match-screen" class="screen hidden">
+    <div class="hud">
+      <span id="hud-black" class="hud-label black">BLACK</span>
+      <span id="hud-tag" class="hud-tag">HOT-SEAT</span>
+      <span id="hud-white" class="hud-label white">WHITE</span>
+    </div>
+
+    <div id="board" class="board" role="grid" aria-label="Chess board"></div>
+
+    <div class="captured-tray">
+      <div class="captured-row">
+        <span class="captured-label">CAPTURED BY WHITE</span>
+        <span id="captured-by-white" class="captured-pieces"></span>
+        <span id="material-white" class="material-count"></span>
+      </div>
+      <div class="captured-row">
+        <span class="captured-label">CAPTURED BY BLACK</span>
+        <span id="captured-by-black" class="captured-pieces"></span>
+        <span id="material-black" class="material-count"></span>
+      </div>
+    </div>
+
+    <button id="back-btn" class="text-btn">&larr; BACK TO MENU</button>
+  </section>
+
+  <!-- PROMOTION MODAL -->
+  <div id="promotion-modal" class="overlay hidden">
+    <div class="promotion-card">
+      <p class="panel-label">PROMOTE TO</p>
+      <div id="promotion-choices" class="button-row"></div>
+    </div>
+  </div>
+
+  <!-- FATALITY / END SCREEN -->
+  <div id="end-screen" class="overlay hidden">
+    <div class="vignette"></div>
+    <div class="end-content">
+      <div id="end-glyph" class="end-glyph"></div>
+      <h2 id="end-title" class="end-title">FATALITY</h2>
+      <p id="end-subtitle" class="end-subtitle">CHECKMATE — WHITE WINS</p>
+      <button id="new-game-btn" class="danger-btn">NEW GAME</button>
+    </div>
+  </div>
+
+</main>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>

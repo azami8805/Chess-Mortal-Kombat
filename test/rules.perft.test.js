@@ -2,7 +2,7 @@
 // standard starting position out to a fixed depth. The correct counts are
 // public, well-known values every chess-programming rules engine is checked
 // against. Run with: node test/rules.perft.test.js
-import { createInitialState, perft } from '../rules.js';
+import { createInitialState, perft } from '../public/rules.js';
 
 const EXPECTED = { 1: 20, 2: 400, 3: 8902 };
 
