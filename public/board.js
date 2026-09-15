@@ -90,19 +90,22 @@ export function showPromotionModal(color) {
   });
 }
 
-export function showEndScreen({ status, winnerColor }) {
+export function showEndScreen({ status, winnerColor, matingFighter, matingPiece }) {
   const overlay = document.getElementById('end-screen');
   const glyphEl = document.getElementById('end-glyph');
   const titleEl = document.getElementById('end-title');
+  const fatalityNameEl = document.getElementById('end-fatality-name');
   const subtitleEl = document.getElementById('end-subtitle');
 
   if (status === 'checkmate') {
-    glyphEl.textContent = winnerColor === 'w' ? GLYPHS.K : GLYPHS.k;
+    glyphEl.textContent = matingPiece ? pieceGlyph(matingPiece) : (winnerColor === 'w' ? GLYPHS.K : GLYPHS.k);
     titleEl.textContent = 'FATALITY';
+    fatalityNameEl.textContent = matingFighter ? `"${matingFighter.fatality}" — ${matingFighter.title}` : '';
     subtitleEl.textContent = `CHECKMATE — ${winnerColor === 'w' ? 'WHITE' : 'BLACK'} WINS`;
   } else {
     glyphEl.textContent = '½';
     titleEl.textContent = 'DRAW';
+    fatalityNameEl.textContent = '';
     subtitleEl.textContent = 'STALEMATE — NO LEGAL MOVES';
   }
 
@@ -111,4 +114,24 @@ export function showEndScreen({ status, winnerColor }) {
 
 export function hideEndScreen() {
   document.getElementById('end-screen').classList.add('hidden');
+}
+
+let combatToastTimer = null;
+
+/** Briefly flashes the capturing fighter's combat move over the board. */
+export function showCombatToast(fighter) {
+  const toast = document.getElementById('combat-toast');
+  document.getElementById('combat-toast-title').textContent = fighter.title;
+  document.getElementById('combat-toast-move').textContent = fighter.move;
+
+  clearTimeout(combatToastTimer);
+  toast.classList.remove('hidden');
+  // Force a reflow so re-triggering the transition works on rapid captures.
+  void toast.offsetWidth;
+  toast.classList.add('visible');
+
+  combatToastTimer = setTimeout(() => {
+    toast.classList.remove('visible');
+    combatToastTimer = setTimeout(() => toast.classList.add('hidden'), 200);
+  }, 1000);
 }

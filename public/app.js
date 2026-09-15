@@ -2,8 +2,9 @@
 // phases) the computer opponent and the online client, on top of the pure
 // rules.js state and the pure board.js rendering helpers.
 import { createInitialState, generateLegalMoves, makeMove, getGameStatus, getCapturedPieces } from './rules.js';
-import { renderBoard, renderCaptured, showPromotionModal, showEndScreen, hideEndScreen } from './board.js';
+import { renderBoard, renderCaptured, showPromotionModal, showEndScreen, hideEndScreen, showCombatToast } from './board.js';
 import { chooseMove } from './engine.js';
+import { fighterFor } from './fighters.js';
 
 const ENGINE_THINK_DELAY_MS = 300; // purely cosmetic — the engine itself resolves in milliseconds
 
@@ -40,6 +41,7 @@ const app = {
   onlineWs: null,
   onlineSeat: null, // 'w' | 'b' | 'spectator', online mode only
   onlineConnected: false,
+  lastMove: null, // drives the combat toast and the Fatality flavor text
 };
 
 function showScreen(name) {
@@ -60,6 +62,7 @@ function startNewGame(mode, options = {}) {
   app.legalMoves = [];
   app.humanColor = options.humanColor ?? null;
   app.engineThinking = false;
+  app.lastMove = null;
   hideEndScreen();
   showScreen('match');
   render();
@@ -94,7 +97,13 @@ function render() {
   }
 
   if (status === 'checkmate') {
-    showEndScreen({ status, winnerColor: opponent(app.state.turn) });
+    const matingPiece = app.lastMove?.piece;
+    showEndScreen({
+      status,
+      winnerColor: opponent(app.state.turn),
+      matingPiece,
+      matingFighter: matingPiece ? fighterFor(matingPiece) : null,
+    });
   } else if (status === 'stalemate') {
     showEndScreen({ status });
   }
@@ -153,9 +162,15 @@ async function handleSquareClick(sq) {
 
 function applyMove(move) {
   app.state = makeMove(app.state, move);
+  app.lastMove = move;
   app.selected = null;
   app.legalMoves = [];
   render();
+
+  if (move.captured && getGameStatus(app.state) !== 'checkmate') {
+    showCombatToast(fighterFor(move.piece));
+  }
+
   maybeTriggerEngineMove();
 }
 
@@ -200,6 +215,9 @@ function connectToRoom(code) {
     } else if (msg.type === 'state') {
       applyServerState(msg.payload);
       render();
+      if (msg.payload.lastMove?.captured && getGameStatus(app.state) !== 'checkmate') {
+        showCombatToast(fighterFor(msg.payload.lastMove.piece));
+      }
     }
   });
 
@@ -217,6 +235,7 @@ function connectToRoom(code) {
 
 function applyServerState(payload) {
   app.state = { board: payload.board, turn: payload.turn, castling: payload.castling, enPassant: payload.enPassant };
+  app.lastMove = payload.lastMove || null;
   app.selected = null;
   app.legalMoves = [];
 }

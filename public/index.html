@@ -71,7 +71,13 @@
       <span id="hud-white" class="hud-label white">WHITE</span>
     </div>
 
-    <div id="board" class="board" role="grid" aria-label="Chess board"></div>
+    <div class="board-wrap">
+      <div id="board" class="board" role="grid" aria-label="Chess board"></div>
+      <div id="combat-toast" class="combat-toast hidden">
+        <span id="combat-toast-title" class="combat-toast-title"></span>
+        <span id="combat-toast-move" class="combat-toast-move"></span>
+      </div>
+    </div>
 
     <div class="captured-tray">
       <div class="captured-row">
@@ -106,6 +112,7 @@
     <div class="end-content">
       <div id="end-glyph" class="end-glyph"></div>
       <h2 id="end-title" class="end-title">FATALITY</h2>
+      <p id="end-fatality-name" class="end-fatality-name"></p>
       <p id="end-subtitle" class="end-subtitle">CHECKMATE — WHITE WINS</p>
       <button id="new-game-btn" class="danger-btn">NEW GAME</button>
     </div>

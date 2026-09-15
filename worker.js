@@ -43,11 +43,15 @@ export class Room {
     return seats;
   }
 
-  broadcastState() {
+  // `lastMove` (the move that produced this state, or null e.g. after a
+  // reset) rides along in the broadcast only — it's not persisted as part
+  // of the saved game state, just used by clients to show the capturing
+  // piece's combat move / the mating piece's Fatality.
+  broadcastState(lastMove = null) {
     const state = this.getState();
     const message = JSON.stringify({
       type: 'state',
-      payload: { ...state, status: getGameStatus(state) },
+      payload: { ...state, status: getGameStatus(state), lastMove },
     });
     for (const ws of this.ctx.getWebSockets()) ws.send(message);
   }
@@ -97,11 +101,11 @@ export class Room {
       );
       if (!match) return; // illegal move — dropped, never applied
       this.setState(makeMove(state, match));
-      this.broadcastState();
+      this.broadcastState(match);
     } else if (msg.type === 'newGame') {
       if (seat !== 'w' && seat !== 'b') return; // only seated players may reset, not spectators
       this.setState(createInitialState());
-      this.broadcastState();
+      this.broadcastState(null);
     }
   }
 

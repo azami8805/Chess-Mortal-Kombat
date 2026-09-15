@@ -189,14 +189,54 @@ html, body {
   color: var(--steel);
 }
 
+.board-wrap {
+  position: relative;
+  width: min(90vw, 520px);
+  margin: 0 auto;
+}
+
 .board {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   grid-template-rows: repeat(8, 1fr);
-  width: min(90vw, 520px);
+  width: 100%;
   height: min(90vw, 520px);
-  margin: 0 auto;
   border: 2px solid var(--blood);
+}
+
+.combat-toast {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%) scale(0.9);
+  text-align: center;
+  pointer-events: none;
+  background: rgba(11, 11, 14, 0.85);
+  border: 1.5px solid var(--blood);
+  border-radius: 6px;
+  padding: 14px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 5;
+}
+.combat-toast.visible {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+.combat-toast-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: 2px;
+  color: var(--ember);
+}
+.combat-toast-move {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--bone);
 }
 
 .square {
@@ -333,6 +373,14 @@ html, body {
   letter-spacing: 6px;
   color: var(--blood);
   margin: 8px 0 4px;
+}
+
+.end-fatality-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 26px;
+  letter-spacing: 3px;
+  color: var(--gold);
+  margin: 0 0 10px;
 }
 
 .end-subtitle {

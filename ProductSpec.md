@@ -30,7 +30,7 @@ Chess, played straight — but re-skinned as a fighting game. Every chess piece 
 | Knight | The Cavalry | Flank Trample | Skewering Charge |
 | Pawn | The Recruit | Shieldbreaker Jab | Last Stand Detonation |
 
-These are flavor text/labels shown in the UI when the corresponding event happens (a capture, or the winning checkmate) — they do not change any chess rule. Only the checkmating side's piece performs a Fatality; a captured piece's "combat move" plays for every capture regardless of which piece did the capturing.
+These are flavor text/labels shown in the UI when the corresponding event happens (a capture, or the winning checkmate) — they do not change any chess rule. The **capturing** piece's combat move plays every time it takes an enemy piece (e.g. a Rook capturing anything shows "THE JUGGERNAUT — WALL CRUSH"). Only the checkmating side's piece performs its Fatality, shown on the end screen in place of a generic "FATALITY" message.
 
 ### 1.3 Screens (from the Figma "Game Screens" page)
 
