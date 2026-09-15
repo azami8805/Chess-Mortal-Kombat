@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Chess x Mortal Kombat - a browser chess game on Cloudflare Workers.",
   "scripts": {
-    "test": "node test/rules.perft.test.js",
+    "test": "node test/rules.perft.test.js && node test/engine.bench.js",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy"
   },

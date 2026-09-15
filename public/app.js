@@ -3,6 +3,9 @@
 // rules.js state and the pure board.js rendering helpers.
 import { createInitialState, generateLegalMoves, makeMove, getGameStatus } from './rules.js';
 import { renderBoard, renderCaptured, showPromotionModal, showEndScreen, hideEndScreen } from './board.js';
+import { chooseMove } from './engine.js';
+
+const ENGINE_THINK_DELAY_MS = 300; // purely cosmetic — the engine itself resolves in milliseconds
 
 const els = {
   modeSelect: document.getElementById('mode-select-screen'),
@@ -33,6 +36,8 @@ const app = {
   legalMoves: [],
   capturedByWhite: [],
   capturedByBlack: [],
+  humanColor: null, // 'computer' mode only: which color the human plays
+  engineThinking: false,
 };
 
 function showScreen(name) {
@@ -46,16 +51,19 @@ function resetSubPanels() {
   els.onlineStatus.textContent = '';
 }
 
-function startNewGame(mode) {
+function startNewGame(mode, options = {}) {
   app.mode = mode;
   app.state = createInitialState();
   app.selected = null;
   app.legalMoves = [];
   app.capturedByWhite = [];
   app.capturedByBlack = [];
+  app.humanColor = options.humanColor ?? null;
+  app.engineThinking = false;
   hideEndScreen();
   showScreen('match');
   render();
+  maybeTriggerEngineMove();
 }
 
 function render() {
@@ -77,7 +85,7 @@ function render() {
   els.hudBlack.classList.toggle('inactive', app.state.turn !== 'b');
 
   const modeLabel = { hotseat: 'HOT-SEAT', computer: 'VS COMPUTER', online: 'ONLINE' }[app.mode] || '';
-  const turnLabel = app.state.turn === 'w' ? 'WHITE TO MOVE' : 'BLACK TO MOVE';
+  const turnLabel = app.engineThinking ? 'ENGINE THINKING…' : app.state.turn === 'w' ? 'WHITE TO MOVE' : 'BLACK TO MOVE';
   els.hudTag.textContent = `${modeLabel} · ${turnLabel}`;
 
   if (status === 'checkmate') {
@@ -90,6 +98,8 @@ function render() {
 async function handleSquareClick(sq) {
   const status = getGameStatus(app.state);
   if (status === 'checkmate' || status === 'stalemate') return;
+  if (app.engineThinking) return;
+  if (app.mode === 'computer' && app.state.turn !== app.humanColor) return;
 
   const piece = app.state.board[sq];
 
@@ -138,6 +148,23 @@ function applyMove(move) {
   app.selected = null;
   app.legalMoves = [];
   render();
+  maybeTriggerEngineMove();
+}
+
+function maybeTriggerEngineMove() {
+  if (app.mode !== 'computer') return;
+  const status = getGameStatus(app.state);
+  if (status === 'checkmate' || status === 'stalemate') return;
+  if (app.state.turn === app.humanColor) return;
+
+  app.engineThinking = true;
+  render();
+  setTimeout(() => {
+    const move = chooseMove(app.state, 2);
+    app.engineThinking = false;
+    if (move) applyMove(move);
+    else render();
+  }, ENGINE_THINK_DELAY_MS);
 }
 
 // ---------- Mode select wiring ----------
@@ -158,13 +185,7 @@ document.querySelectorAll('.mode-btn').forEach((btn) => {
 
 els.colorPick.querySelectorAll('.pill-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
-    els.onlineStatus.textContent = '';
-    // Computer opponent lands in Phase 2 — see FEATUREROADMAP_workplan.md.
-    els.colorPick.querySelector('.panel-status')?.remove();
-    const note = document.createElement('p');
-    note.className = 'panel-status';
-    note.textContent = 'VS Computer is coming in Phase 2 — hot-seat is live now.';
-    els.colorPick.appendChild(note);
+    startNewGame('computer', { humanColor: btn.dataset.color });
   });
 });
 
@@ -178,5 +199,5 @@ els.backBtn.addEventListener('click', () => {
 });
 
 els.newGameBtn.addEventListener('click', () => {
-  startNewGame(app.mode);
+  startNewGame(app.mode, { humanColor: app.humanColor });
 });
