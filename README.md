@@ -4,7 +4,7 @@
 
 A browser chess game with a dark, cinematic fighting-game skin. Every rule of real chess applies — captures just trigger a combat flourish, and checkmate triggers a full-screen **Fatality**. Runs entirely on Cloudflare's free hosting tier, no build step, no framework.
 
-**Live URL:** _(added after the first deploy — see [FEATUREROADMAP_workplan.md](FEATUREROADMAP_workplan.md), Task 1.4)_
+**Live URL:** _(all three modes are built and tested locally — deploying to a public `*.workers.dev` URL needs a one-time `wrangler login` from you; see the bottom of this file)_
 
 **Figma concept design:** https://www.figma.com/design/2JQSqGFpuPBICRJUGD61ys/Chess-x-Mortal-Kombat-Concept
 
@@ -38,10 +38,29 @@ A few terms used throughout these docs, defined once here so you don't need a co
 
 ## Repository conventions
 
-- All game rules (legal moves, check, checkmate, castling, en passant, promotion) live in **one file**, `rules.js` — no external chess library. It's shared by every mode (hot-seat, computer, online server) so there is exactly one source of truth for "is this move legal?".
+- All game rules (legal moves, check, checkmate, castling, en passant, promotion) live in **one file**, `public/rules.js` — no external chess library. It's shared by every mode (hot-seat, computer, online server) so there is exactly one source of truth for "is this move legal?".
 - Plain HTML, CSS, and JavaScript only — no React, no build step.
 - Git workflow: one commit per completed roadmap task, pushed to `origin`, opened as a pull request against `main`. No force-pushes.
 
 ## Status
 
-📄 Documentation phase — see the workplan for the first buildable task.
+✅ All four phases built and tested (rules engine, Hot-Seat, VS Computer, Online rooms, plus the captured-pieces/material-count extra). Only the live deploy is outstanding.
+
+### Running it yourself
+
+```bash
+npm install
+npm test        # runs the perft correctness proof + the engine speed check
+npx wrangler dev   # play it locally at http://localhost:8787
+```
+
+### Deploying it for real
+
+This needs a Cloudflare account, which only you can authorize:
+
+```bash
+npx wrangler login   # opens a browser to sign in — one time only
+npx wrangler deploy  # publishes to a *.workers.dev URL
+```
+
+Once deployed, paste the URL at the top of this file.

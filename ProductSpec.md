@@ -107,15 +107,9 @@ To keep this buildable, the following are deliberately **excluded** (not "later,
 
 ## 5. Optional extra (built last, after everything above works)
 
-Pick **one** — this is the only open decision left in this spec:
+**Chosen: captured pieces + material count.** A tray under the board shows each side's captured fighters and the point-value difference between the two sides. It was the leading candidate since it was already sketched as a placeholder on the Match screen, and it's implemented as a pure derivation from the current board (whatever pieces are missing from the standard starting set), so it stays correct automatically in every mode without separate bookkeeping.
 
-- **None** — ship without any extra polish.
-- **Undo (Hot-Seat only)** — let players take back the last move in a shared-device game.
-- **Captured pieces + material count** — a tray showing captured fighters per side and the point-value difference (sketched as a placeholder on the Match screen already).
-- **Sound on move** — a sound effect plays on move/capture/checkmate.
-- **Resign button (Online)** — either online player can concede, ending the game early.
-
-The roadmap treats this as a swappable last task — whichever is chosen, the earlier phases don't change.
+The other options considered, for reference: undo (Hot-Seat only), sound on move, and a resign button (Online).
 
 ---
 
