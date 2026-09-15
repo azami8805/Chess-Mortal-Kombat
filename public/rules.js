@@ -322,6 +322,28 @@ export function getGameStatus(state) {
   return inCheck ? 'check' : 'in_progress';
 }
 
+const STARTING_COUNT = { p: 8, n: 2, b: 2, r: 2, q: 1, k: 1 };
+
+/**
+ * Derives which pieces have been captured, purely from what's missing on
+ * the board compared to the standard starting set — no move history needed.
+ * Returns lowercase-typed piece letters (e.g. 'q', 'p') in each list.
+ */
+export function getCapturedPieces(board) {
+  const onBoard = { P: 0, N: 0, B: 0, R: 0, Q: 0, K: 0, p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 };
+  for (const piece of board) {
+    if (piece) onBoard[piece]++;
+  }
+
+  const capturedByWhite = []; // black pieces missing = captured by White
+  const capturedByBlack = []; // white pieces missing = captured by Black
+  for (const type of ['q', 'r', 'b', 'n', 'p']) {
+    for (let i = 0; i < STARTING_COUNT[type] - onBoard[type]; i++) capturedByWhite.push(type);
+    for (let i = 0; i < STARTING_COUNT[type] - onBoard[type.toUpperCase()]; i++) capturedByBlack.push(type.toUpperCase());
+  }
+  return { capturedByWhite, capturedByBlack };
+}
+
 /** Counts leaf nodes at exactly `depth` plies — the standard chess "perft" correctness test. */
 export function perft(state, depth) {
   if (depth === 0) return 1;

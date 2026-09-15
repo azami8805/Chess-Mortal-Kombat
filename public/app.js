@@ -1,7 +1,7 @@
 // app.js — the controller. Wires mode-select, the game loop, and (later
 // phases) the computer opponent and the online client, on top of the pure
 // rules.js state and the pure board.js rendering helpers.
-import { createInitialState, generateLegalMoves, makeMove, getGameStatus } from './rules.js';
+import { createInitialState, generateLegalMoves, makeMove, getGameStatus, getCapturedPieces } from './rules.js';
 import { renderBoard, renderCaptured, showPromotionModal, showEndScreen, hideEndScreen } from './board.js';
 import { chooseMove } from './engine.js';
 
@@ -19,6 +19,7 @@ const els = {
   hudTag: document.getElementById('hud-tag'),
   backBtn: document.getElementById('back-btn'),
   newGameBtn: document.getElementById('new-game-btn'),
+  newGameMidBtn: document.getElementById('new-game-mid-btn'),
 };
 
 const colorOf = (piece) => (piece === piece.toUpperCase() ? 'w' : 'b');
@@ -34,10 +35,11 @@ const app = {
   state: null,
   selected: null,
   legalMoves: [],
-  capturedByWhite: [],
-  capturedByBlack: [],
   humanColor: null, // 'computer' mode only: which color the human plays
   engineThinking: false,
+  onlineWs: null,
+  onlineSeat: null, // 'w' | 'b' | 'spectator', online mode only
+  onlineConnected: false,
 };
 
 function showScreen(name) {
@@ -56,8 +58,6 @@ function startNewGame(mode, options = {}) {
   app.state = createInitialState();
   app.selected = null;
   app.legalMoves = [];
-  app.capturedByWhite = [];
-  app.capturedByBlack = [];
   app.humanColor = options.humanColor ?? null;
   app.engineThinking = false;
   hideEndScreen();
@@ -79,14 +79,19 @@ function render() {
     onSquareClick: handleSquareClick,
   });
 
-  renderCaptured({ capturedByWhite: app.capturedByWhite, capturedByBlack: app.capturedByBlack });
+  renderCaptured(getCapturedPieces(app.state.board));
 
   els.hudWhite.classList.toggle('inactive', app.state.turn !== 'w');
   els.hudBlack.classList.toggle('inactive', app.state.turn !== 'b');
 
-  const modeLabel = { hotseat: 'HOT-SEAT', computer: 'VS COMPUTER', online: 'ONLINE' }[app.mode] || '';
-  const turnLabel = app.engineThinking ? 'ENGINE THINKING…' : app.state.turn === 'w' ? 'WHITE TO MOVE' : 'BLACK TO MOVE';
-  els.hudTag.textContent = `${modeLabel} · ${turnLabel}`;
+  if (app.mode === 'online' && !app.onlineConnected) {
+    els.hudTag.textContent = 'DISCONNECTED — go back and rejoin with the room code';
+  } else {
+    const modeLabel = { hotseat: 'HOT-SEAT', computer: 'VS COMPUTER', online: 'ONLINE' }[app.mode] || '';
+    const turnLabel = app.engineThinking ? 'ENGINE THINKING…' : app.state.turn === 'w' ? 'WHITE TO MOVE' : 'BLACK TO MOVE';
+    const seatLabel = app.mode === 'online' && app.onlineSeat ? ` · YOU ARE ${app.onlineSeat === 'spectator' ? 'SPECTATING' : app.onlineSeat === 'w' ? 'WHITE' : 'BLACK'}` : '';
+    els.hudTag.textContent = `${modeLabel} · ${turnLabel}${seatLabel}`;
+  }
 
   if (status === 'checkmate') {
     showEndScreen({ status, winnerColor: opponent(app.state.turn) });
@@ -100,6 +105,7 @@ async function handleSquareClick(sq) {
   if (status === 'checkmate' || status === 'stalemate') return;
   if (app.engineThinking) return;
   if (app.mode === 'computer' && app.state.turn !== app.humanColor) return;
+  if (app.mode === 'online' && (!app.onlineConnected || app.onlineSeat !== app.state.turn)) return;
 
   const piece = app.state.board[sq];
 
@@ -135,15 +141,17 @@ async function handleSquareClick(sq) {
     chosen = candidates.find((m) => m.flags.promotion === promo);
   }
 
-  applyMove(chosen);
+  if (app.mode === 'online') {
+    app.onlineWs.send(JSON.stringify({ type: 'move', payload: { from: chosen.from, to: chosen.to, promotion: chosen.flags.promotion || null } }));
+    app.selected = null;
+    app.legalMoves = [];
+    render(); // the authoritative board update arrives via the server's broadcast
+  } else {
+    applyMove(chosen);
+  }
 }
 
 function applyMove(move) {
-  if (move.captured) {
-    const capturingColor = colorOf(move.piece);
-    if (capturingColor === 'w') app.capturedByWhite.push(move.captured);
-    else app.capturedByBlack.push(move.captured);
-  }
   app.state = makeMove(app.state, move);
   app.selected = null;
   app.legalMoves = [];
@@ -165,6 +173,52 @@ function maybeTriggerEngineMove() {
     if (move) applyMove(move);
     else render();
   }, ENGINE_THINK_DELAY_MS);
+}
+
+// ---------- Online client ----------
+
+function connectToRoom(code) {
+  els.onlineStatus.textContent = 'Connecting…';
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(`${proto}://${location.host}/api/room/${encodeURIComponent(code)}`);
+
+  ws.addEventListener('open', () => {
+    els.onlineStatus.textContent = '';
+  });
+
+  ws.addEventListener('message', (event) => {
+    const msg = JSON.parse(event.data);
+    if (msg.type === 'welcome') {
+      app.mode = 'online';
+      app.onlineWs = ws;
+      app.onlineSeat = msg.payload.seat;
+      app.onlineConnected = true;
+      applyServerState(msg.payload);
+      hideEndScreen();
+      showScreen('match');
+      render();
+    } else if (msg.type === 'state') {
+      applyServerState(msg.payload);
+      render();
+    }
+  });
+
+  ws.addEventListener('close', () => {
+    if (app.onlineWs !== ws) return; // an old, already-replaced connection — ignore
+    app.onlineConnected = false;
+    els.onlineStatus.textContent = 'Disconnected from room.';
+    if (app.mode === 'online') render();
+  });
+
+  ws.addEventListener('error', () => {
+    els.onlineStatus.textContent = 'Could not connect — check the room code and try again.';
+  });
+}
+
+function applyServerState(payload) {
+  app.state = { board: payload.board, turn: payload.turn, castling: payload.castling, enPassant: payload.enPassant };
+  app.selected = null;
+  app.legalMoves = [];
 }
 
 // ---------- Mode select wiring ----------
@@ -190,14 +244,32 @@ els.colorPick.querySelectorAll('.pill-btn').forEach((btn) => {
 });
 
 document.getElementById('room-join-btn').addEventListener('click', () => {
-  els.onlineStatus.textContent = 'Online play is coming in Phase 3 — hot-seat is live now.';
+  const code = document.getElementById('room-code-input').value.trim().toUpperCase();
+  if (!code) {
+    els.onlineStatus.textContent = 'Enter a room code first.';
+    return;
+  }
+  connectToRoom(code);
 });
 
 els.backBtn.addEventListener('click', () => {
+  if (app.mode === 'online' && app.onlineWs) {
+    app.onlineWs.close();
+    app.onlineWs = null;
+    app.onlineSeat = null;
+    app.onlineConnected = false;
+  }
   showScreen('menu');
   resetSubPanels();
 });
 
-els.newGameBtn.addEventListener('click', () => {
-  startNewGame(app.mode, { humanColor: app.humanColor });
-});
+function requestNewGame() {
+  if (app.mode === 'online') {
+    app.onlineWs.send(JSON.stringify({ type: 'newGame' }));
+  } else {
+    startNewGame(app.mode, { humanColor: app.humanColor });
+  }
+}
+
+els.newGameBtn.addEventListener('click', requestNewGame);
+els.newGameMidBtn.addEventListener('click', requestNewGame);

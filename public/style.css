@@ -258,8 +258,14 @@ html, body {
 .captured-pieces { flex: 1; font-size: 18px; letter-spacing: 2px; color: var(--bone); }
 .material-count { flex: none; font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: var(--gold); }
 
-.text-btn {
+.match-footer {
   margin-top: 24px;
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+}
+
+.text-btn {
   background: none;
   border: none;
   color: var(--steel);
