@@ -1,5 +1,7 @@
-// board.js — pure DOM rendering helpers. No game rules live here; this file
-// only turns a rules.js state (plus some UI-only selection info) into HTML.
+// board.js — pure DOM rendering helpers, plus the combat/impact effects.
+// No game rules live here; this file only turns a rules.js state (plus some
+// UI-only selection info) into HTML, and animates what just happened to it.
+import { pieceIconSVG } from './icons.js';
 
 const GLYPHS = {
   K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙',
@@ -18,6 +20,13 @@ export function squareFromRowCol(row, col) {
   return rank * 16 + col;
 }
 
+function pieceSpan(piece) {
+  const span = document.createElement('span');
+  span.className = `piece ${piece === piece.toUpperCase() ? 'white' : 'black'}`;
+  span.innerHTML = pieceIconSVG(piece);
+  return span;
+}
+
 export function renderBoard(container, { board, selected, legalTargets, checkedSquare, onSquareClick }) {
   container.innerHTML = '';
   for (let row = 0; row < 8; row++) {
@@ -32,10 +41,7 @@ export function renderBoard(container, { board, selected, legalTargets, checkedS
 
       const piece = board[sq];
       if (piece) {
-        const span = document.createElement('span');
-        span.className = `piece ${piece === piece.toUpperCase() ? 'white' : 'black'}`;
-        span.textContent = pieceGlyph(piece);
-        el.appendChild(span);
+        el.appendChild(pieceSpan(piece));
       }
 
       if (selected === sq) el.classList.add('selected');
@@ -57,8 +63,8 @@ export function renderCaptured({ capturedByWhite, capturedByBlack }) {
   const whiteMatEl = document.getElementById('material-white');
   const blackMatEl = document.getElementById('material-black');
 
-  whiteEl.textContent = capturedByWhite.map(pieceGlyph).join(' ');
-  blackEl.textContent = capturedByBlack.map(pieceGlyph).join(' ');
+  whiteEl.innerHTML = capturedByWhite.map((p) => `<span class="captured-icon black">${pieceIconSVG(p)}</span>`).join('');
+  blackEl.innerHTML = capturedByBlack.map((p) => `<span class="captured-icon white">${pieceIconSVG(p)}</span>`).join('');
 
   const sum = (pieces) => pieces.reduce((total, p) => total + (MATERIAL_VALUE[p.toLowerCase()] || 0), 0);
   const whitePoints = sum(capturedByWhite);
@@ -77,8 +83,8 @@ export function showPromotionModal(color) {
     for (const type of ['q', 'r', 'b', 'n']) {
       const piece = color === 'w' ? type.toUpperCase() : type;
       const btn = document.createElement('button');
-      btn.className = 'promotion-choice';
-      btn.textContent = pieceGlyph(piece);
+      btn.className = `promotion-choice ${color === 'w' ? 'white' : 'black'}`;
+      btn.innerHTML = pieceIconSVG(piece);
       btn.addEventListener('click', () => {
         modal.classList.add('hidden');
         resolve(type);
@@ -98,11 +104,14 @@ export function showEndScreen({ status, winnerColor, matingFighter, matingPiece 
   const subtitleEl = document.getElementById('end-subtitle');
 
   if (status === 'checkmate') {
-    glyphEl.textContent = matingPiece ? pieceGlyph(matingPiece) : (winnerColor === 'w' ? GLYPHS.K : GLYPHS.k);
+    const piece = matingPiece || (winnerColor === 'w' ? 'K' : 'k');
+    glyphEl.className = `end-glyph ${piece === piece.toUpperCase() ? 'white' : 'black'}`;
+    glyphEl.innerHTML = pieceIconSVG(piece);
     titleEl.textContent = 'FATALITY';
     fatalityNameEl.textContent = matingFighter ? `"${matingFighter.fatality}" — ${matingFighter.title}` : '';
     subtitleEl.textContent = `CHECKMATE — ${winnerColor === 'w' ? 'WHITE' : 'BLACK'} WINS`;
   } else {
+    glyphEl.className = 'end-glyph';
     glyphEl.textContent = '½';
     titleEl.textContent = 'DRAW';
     fatalityNameEl.textContent = '';
@@ -134,4 +143,45 @@ export function showCombatToast(fighter) {
     toast.classList.remove('visible');
     combatToastTimer = setTimeout(() => toast.classList.add('hidden'), 200);
   }, 1000);
+}
+
+// ---------- Move / capture impact effects ----------
+
+function pieceElAt(square) {
+  return document.querySelector(`#board .square[data-square="${square}"] .piece`);
+}
+
+/** A quick windup pulse on the piece that's about to move. */
+export function pulseAttack(square) {
+  const el = pieceElAt(square);
+  if (!el) return;
+  el.classList.add('piece-attack');
+}
+
+/** Plays a "knocked out" animation on whatever is currently at `square`, resolving once it's done. */
+export function pulseDeath(square) {
+  return new Promise((resolve) => {
+    const el = pieceElAt(square);
+    if (!el) {
+      resolve();
+      return;
+    }
+    el.classList.add('piece-dying');
+    setTimeout(resolve, 300);
+  });
+}
+
+/** A brief "impact landed" pop on the piece now occupying `square`, after a re-render. */
+export function pulseLanding(square) {
+  const el = pieceElAt(square);
+  if (!el) return;
+  el.classList.add('piece-land');
+  el.addEventListener('animationend', () => el.classList.remove('piece-land'), { once: true });
+}
+
+/** A short screen shake for dramatic weight right as checkmate lands. */
+export function shakeBoard() {
+  const board = document.getElementById('board');
+  board.classList.add('shake');
+  board.addEventListener('animationend', () => board.classList.remove('shake'), { once: true });
 }

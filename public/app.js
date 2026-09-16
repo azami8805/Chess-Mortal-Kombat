@@ -2,7 +2,7 @@
 // phases) the computer opponent and the online client, on top of the pure
 // rules.js state and the pure board.js rendering helpers.
 import { createInitialState, generateLegalMoves, makeMove, getGameStatus, getCapturedPieces } from './rules.js';
-import { renderBoard, renderCaptured, showPromotionModal, showEndScreen, hideEndScreen, showCombatToast } from './board.js';
+import { renderBoard, renderCaptured, showPromotionModal, showEndScreen, hideEndScreen, showCombatToast, pulseAttack, pulseDeath, pulseLanding, shakeBoard } from './board.js';
 import { chooseMove } from './engine.js';
 import { fighterFor } from './fighters.js';
 
@@ -25,6 +25,15 @@ const els = {
 
 const colorOf = (piece) => (piece === piece.toUpperCase() ? 'w' : 'b');
 const opponent = (color) => (color === 'w' ? 'b' : 'w');
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Where the captured piece actually sits — usually `to`, but one rank behind it for en passant. */
+function captureSquareFor(move) {
+  if (move.flags?.enPassant) {
+    return move.to + (colorOf(move.piece) === 'w' ? -16 : 16);
+  }
+  return move.to;
+}
 
 function findKingSquare(board, color) {
   const king = color === 'w' ? 'K' : 'k';
@@ -96,6 +105,11 @@ function render() {
     els.hudTag.textContent = `${modeLabel} · ${turnLabel}${seatLabel}`;
   }
 
+}
+
+/** Shown separately from render() so a checkmate can shake the board first, then cut to the Fatality screen. */
+function revealEndScreenIfOver() {
+  const status = getGameStatus(app.state);
   if (status === 'checkmate') {
     const matingPiece = app.lastMove?.piece;
     showEndScreen({
@@ -160,15 +174,29 @@ async function handleSquareClick(sq) {
   }
 }
 
-function applyMove(move) {
+async function applyMove(move) {
+  if (move.captured) {
+    await pulseDeath(captureSquareFor(move));
+  } else {
+    pulseAttack(move.from);
+    await wait(140);
+  }
+
   app.state = makeMove(app.state, move);
   app.lastMove = move;
   app.selected = null;
   app.legalMoves = [];
   render();
+  pulseLanding(move.to);
 
-  if (move.captured && getGameStatus(app.state) !== 'checkmate') {
-    showCombatToast(fighterFor(move.piece));
+  const status = getGameStatus(app.state);
+  if (status === 'checkmate') {
+    shakeBoard();
+    await wait(350);
+    revealEndScreenIfOver();
+  } else {
+    if (move.captured) showCombatToast(fighterFor(move.piece));
+    if (status === 'stalemate') revealEndScreenIfOver();
   }
 
   maybeTriggerEngineMove();
@@ -201,7 +229,7 @@ function connectToRoom(code) {
     els.onlineStatus.textContent = '';
   });
 
-  ws.addEventListener('message', (event) => {
+  ws.addEventListener('message', async (event) => {
     const msg = JSON.parse(event.data);
     if (msg.type === 'welcome') {
       app.mode = 'online';
@@ -213,10 +241,29 @@ function connectToRoom(code) {
       showScreen('match');
       render();
     } else if (msg.type === 'state') {
+      const move = msg.payload.lastMove;
+      if (move) {
+        if (move.captured) await pulseDeath(captureSquareFor(move));
+        else {
+          pulseAttack(move.from);
+          await wait(140);
+        }
+      }
+
       applyServerState(msg.payload);
       render();
-      if (msg.payload.lastMove?.captured && getGameStatus(app.state) !== 'checkmate') {
-        showCombatToast(fighterFor(msg.payload.lastMove.piece));
+
+      if (move) {
+        pulseLanding(move.to);
+        const status = getGameStatus(app.state);
+        if (status === 'checkmate') {
+          shakeBoard();
+          await wait(350);
+          revealEndScreenIfOver();
+        } else {
+          if (move.captured) showCombatToast(fighterFor(move.piece));
+          if (status === 'stalemate') revealEndScreenIfOver();
+        }
       }
     }
   });
